@@ -63,6 +63,12 @@ class request_handler(object):
 			cur.execute('delete from status where alarm_id=?', [str(req_time)])
 			con.commit()
 			con.close()
+
+			# kill alarm process
+			cmd = "pkill -f \"ogg123 "+path+"/ringtone.ogg --repeat "+req_time+"\""
+			print str(cmd)
+			os.system(cmd)
+
 		except Exception as e:
 			print e
 			cherrypy.response.status = 500
