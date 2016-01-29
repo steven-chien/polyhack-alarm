@@ -1,0 +1,268 @@
+<!--Copyright (C) 2016 Carson Yan, Anson Kwan
+
+This program is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program.  If not, see <http://www.gnu.org/licenses/> -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Alarm</title>
+    <link rel="stylesheet" href="css/bootstrap.min.css">
+    <link rel="stylesheet" href="css/bootstrap-switch.min.css">
+    <link rel="stylesheet" href="css/bootstrap-datetimepicker.min.css">
+
+    <style>
+        body, h1, h2, h3, h4, h5, h6 {
+            font-family: "HelveticaNeue-Light", "Helvetica Neue Light", "Helvetica Neue", Helvetica, Arial, "Lucida Grande", sans-serif;
+            font-weight: 100;
+        }
+
+        #new-alarm-one-time, #alarm-control, #manage-alarm {
+            display: none;
+        }
+
+        #clock-warp {
+            margin-top: 30vh;
+            background-color: rgba(200, 200, 200, 0.5);
+        }
+
+        .manage-alarm-title {
+            font-size: 30px;
+        }
+
+        .manage-alarm-detail {
+            font-size: 12px;
+            color: rgb(150, 150, 150);
+        }
+
+        .alarm-set {
+            padding-top: 20px;
+            padding-bottom: 20px;
+        }
+
+        .alarm-set:hover, .alarm-set:focus {
+            background-color: rgb(230, 230, 231);
+        }
+
+        .alarm-manage-control {
+            margin-top: 10px;
+        }
+    </style>
+</head>
+<body>
+<div class="warp container">
+    <div class="row">
+        <div id="clock-warp" class="jumbotron text-center">
+            <h1 id="current-time"></h1>
+
+            <h3 id="next-alarm"></h3>
+        </div>
+    </div>
+    <div id="alarm-control" class="row text-center">
+        <button id="new-alarm" class="btn btn-success" data-toggle="modal" data-target="#new-alarm-model">New</button>
+        <button id="manage-alarm" class="btn btn-default" data-toggle="modal" data-target="#manage-alarm-model">Manage
+        </button>
+    </div>
+    <!-- New Alarm Modal -->
+    <div class="modal fade" id="new-alarm-model" tabindex="-1" role="dialog" aria-labelledby="new-alarm-title">
+        <div class="modal-dialog" role="document">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span
+                            aria-hidden="true">&times;</span></button>
+                    <h4 class="modal-title" id="new-alarm-title">New Alarm</h4>
+                </div>
+                <form class="form-horizontal" role="form">
+                    <div class="modal-body">
+                        <div class="form-group">
+                            <label class="control-label col-sm-4" for="new-alarm-one-time-picker">Date Time</label>
+
+                            <div class='input-group date col-sm-6' id='new-alarm-one-time-picker'>
+                                <input type='text' class="form-control" id="new-alarm-add-btn"/>
+                            </div>
+                        </div>
+                    </div>
+
+
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
+                        <button type="button" class="btn btn-primary" id="new-alarm-add">Add</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+    <!-- Manage Alarm Modal -->
+    <div class="modal fade" id="manage-alarm-model" tabindex="-1" role="dialog" aria-labelledby="new-alarm-title">
+        <div class="modal-dialog" role="document">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span
+                            aria-hidden="true">&times;</span></button>
+                    <h4 class="modal-title" id="manage-alarm-title">Manage Alarm</h4>
+                </div>
+                <div class="modal-body" id="fullAlarmList">
+                    <div class="modal-footer">
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+</body>
+<script src="js/jquery-1.12.0.min.js"></script>
+<script src="js/moment.min.js"></script>
+<script src="js/bootstrap.min.js"></script>
+<script src="js/bootstrap-switch.min.js"></script>
+<script src="js/bootstrap-datetimepicker.min.js"></script>
+<script>
+    var mouseMove;
+    var server = "127.0.0.1:8080";
+    $(document).ready(function(){
+        $('#current-time').text(getCurrentDateTime());
+        setInterval(function(){$('#current-time').text(getCurrentDateTime()) }, 1000);
+        setInterval(function(){getAlarmList()}, 1000);
+        updateTheme();
+        setInterval(function(){updateTheme() }, 600000);
+        $('#new-alarm-add-btn').datetimepicker({sideBySide: true});  //Init the Date Time Picker
+    });
+
+    //------ Mouse events ------//
+
+    //Manage button effect
+    $(document).mousemove(function() {
+        $( "#alarm-control" ).fadeIn();
+        clearInterval(mouseMove);
+        mouseMove = setTimeout(function() {$( "#alarm-control" ).fadeOut();}, 5000)
+    });
+
+    $(document).on('mouseleave', function() {
+        $( "#alarm-control" ).fadeOut();
+        clearInterval(mouseMove);
+    });
+
+    //Add new alarm
+    $('#new-alarm-add').click(function(e){
+        if($('#new-alarm-add-btn').val() != "") {
+            var timestamp = Date.parse($('#new-alarm-add-btn').val())/1000;
+            var current = Date.parse(new Date())/1000;
+            if(typeof timestamp == 'number' && timestamp - current > 0) {
+                add(timestamp);
+            } else {
+                alert('The Date and Time must be a date time like format and in future');
+            }
+        }
+    });
+
+    //------ Backend AJAX functions ------//
+
+    function getAlarmList(){
+        var url = "http://"+server+"/alarmList";
+        $.ajax({type: "GET",
+            async: false,
+            url: url,
+            dataType: "jsonp",
+            jsonpCallback:"myJsonpCallback",
+            success: function(json){
+                if(json.alarms.length != 0) {
+                    var d = new Date(parseInt(json.alarms[0].wake) * 1000);
+                    var snooze = "";
+                    if (json.alarms[0].status) {
+                        snooze = "<br><br><button type=\"button\" class=\"btn btn-danger\" onclick=\"snooze(" + json.alarms[0].id + ")\">Snooze</button>";
+                    }
+                    if (d) {
+                        $('#next-alarm').html('<span class="glyphicon glyphicon-bell" aria-hidden="true"></span> '+formatDate(d)+snooze);
+                    }
+                    var fullAlarmList = "";
+                    for(var i=0; i<json.alarms.length; i++){
+                        d = new Date(parseInt(json.alarms[i].wake)*1000);
+                        fullAlarmList += "<div class=\"row alarm-set\"><div class=\"col-xs-9\"><span class=\"manage-alarm-title\">"+formatDate(d)+"</span></div><button type=\"button\" class=\"btn btn-danger\" onclick=\"drop("+json.alarms[i].id+")\">Remove</button></div><hr>";
+                    }
+                    $('#fullAlarmList').html(fullAlarmList);
+                    $('#manage-alarm').css('display', 'inline');
+                } else {
+                    $('#next-alarm').empty();
+                    $('#fullAlarmList').empty();
+                    $('#manage-alarm').css('display', 'none');
+
+                }
+            }
+        });
+    }
+
+    function add(timestamp) {
+        $.ajax({type: "GET",
+            async: false,
+            url: "http://"+server+"/new?req_time="+timestamp+"&repeat=300",
+            dataType: "jsonp",
+            jsonpCallback:"myJsonpCallback",
+            success: function(json){
+                console.log(json.alarms);
+            }
+        });
+        console.log("Click");
+        $('#new-alarm-model').modal('toggle');//show home page
+        $('#new-alarm-add-btn').val("");
+    }
+
+    function snooze(id){
+        var url = "http://"+server+"/stop?req_time="+id;
+        $.ajax({type: "GET",
+            async: false,
+            url: url,
+            dataType: "jsonp",
+            jsonpCallback:"myJsonpCallback",
+            success: function(json){
+                console.log("snooze");
+            }
+        });
+    }
+
+    function drop(id){
+        var url = "http://"+server+"/delete?req_time="+id;
+        $.ajax({type: "GET",
+            async: false,
+            url: url,
+            dataType: "jsonp",
+            jsonpCallback:"myJsonpCallback",
+            success: function(json){
+                console.log("delete");
+            }
+        });
+    }
+
+    //------ Other Functions ------//
+
+    function formatDate(d) {
+        return d.getMonth() + 1 + '/' + d.getDate() + '/' + d.getFullYear() + " " + ("00" + d.getHours()).substr(-2) + ":" + ("00" + d.getMinutes()).substr(-2) + ':' + ("00" + d.getSeconds()).substr(-2);
+
+    }
+    function getCurrentDateTime() {
+        var current = new Date();
+        return ("00" + current.getHours()).substr(-2) + ':' + ("00" + current.getMinutes()).substr(-2) + ':' + ("00" + current.getSeconds()).substr(-2);
+    }
+
+    function updateTheme() {
+        var current = new Date();
+        if(current.getHours() > 6 && current.getHours() < 18) {
+            //Day
+            $('body').css('background-color', 'rgb(247,248,249)');
+            $('#clock-warp').css('color', 'rgb(60,60,61)');
+        } else {
+            //Night
+            $('body').css('background-color', 'rgb(60,60,61)');
+            $('#clock-warp').css('color', 'rgb(247,248,249)');
+        }
+    }
+</script>
+</html>
